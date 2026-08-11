@@ -7,11 +7,12 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -22,6 +23,16 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'email_verified_at',
+        'is_active',
+        'is_banned',
+        'locked_until',
+        'last_login_at',
+        'last_login_ip',
+        'last_login_agent',
+        'two_factor_enabled',
+        'two_factor_secret',
+        'trusted_devices',
     ];
 
     /**
@@ -32,6 +43,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
     ];
 
     /**
@@ -44,6 +56,12 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'is_banned' => 'boolean',
+            'locked_until' => 'datetime',
+            'last_login_at' => 'datetime',
+            'two_factor_enabled' => 'boolean',
+            'trusted_devices' => 'array',
         ];
     }
 }
