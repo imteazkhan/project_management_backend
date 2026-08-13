@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
         'email_verified_at',
         'is_active',
         'is_banned',
@@ -63,5 +64,31 @@ class User extends Authenticatable
             'two_factor_enabled' => 'boolean',
             'trusted_devices' => 'array',
         ];
+    }
+
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class)
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isManager(): bool
+    {
+        return $this->role === 'manager';
+    }
+
+    public function roleInTeam(Team $team): ?string
+    {
+        return $this->teams()
+            ->where('team_id', $team->id)
+            ->first()
+            ?->pivot
+            ?->role;
     }
 }
