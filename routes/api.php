@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -16,4 +18,9 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware('auth:sanctum')->get('/user', function (\Illuminate\Http\Request $request) {
     return $request->user();
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('users', [UserController::class, 'index']);
+    Route::apiResource('teams', TeamController::class);
 });
