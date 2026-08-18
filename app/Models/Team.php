@@ -8,6 +8,8 @@ class Team extends Model
 {
     protected $fillable = [
         'name',
+        'description',
+        'manager_id',
     ];
 
     public function users()
@@ -15,5 +17,10 @@ class Team extends Model
         return $this->belongsToMany(User::class)
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    public function manager()
+    {
+        return $this->belongsTo(Manager::class);
     }
 }

@@ -17,6 +17,11 @@ class TeamResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'description' => $this->description,
+            'manager' => $this->whenLoaded('manager', fn () => $this->manager ? [
+                'id' => $this->manager->id,
+                'name' => $this->manager->user->name,
+            ] : null),
             'member_count' => $this->users->count(),
             'members' => $this->users->map(fn ($user) => [
                 'id' => $user->id,

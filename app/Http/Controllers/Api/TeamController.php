@@ -11,9 +11,11 @@ use Illuminate\Http\JsonResponse;
 
 class TeamController extends Controller
 {
+    private const WITH = ['users', 'manager.user'];
+
     public function index(): JsonResponse
     {
-        $teams = Team::with('users')->latest()->get();
+        $teams = Team::with(self::WITH)->latest()->get();
 
         return response()->json([
             'teams' => TeamResource::collection($teams),
@@ -24,20 +26,22 @@ class TeamController extends Controller
     {
         $team = Team::create([
             'name' => $request->name,
+            'description' => $request->description,
+            'manager_id' => $request->manager_id,
         ]);
 
         $this->syncMembers($team, $request->members ?? []);
 
         return response()->json([
             'message' => 'Team created successfully',
-            'team' => new TeamResource($team->load('users')),
+            'team' => new TeamResource($team->load(self::WITH)),
         ], 201);
     }
 
     public function show(Team $team): JsonResponse
     {
         return response()->json([
-            'team' => new TeamResource($team->load('users')),
+            'team' => new TeamResource($team->load(self::WITH)),
         ]);
     }
 
@@ -45,13 +49,15 @@ class TeamController extends Controller
     {
         $team->update([
             'name' => $request->name,
+            'description' => $request->description,
+            'manager_id' => $request->manager_id,
         ]);
 
         $this->syncMembers($team, $request->members ?? []);
 
         return response()->json([
             'message' => 'Team updated successfully',
-            'team' => new TeamResource($team->load('users')),
+            'team' => new TeamResource($team->load(self::WITH)),
         ]);
     }
 
