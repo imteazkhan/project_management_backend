@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 
 class TeamController extends Controller
 {
-    private const WITH = ['users', 'manager.user'];
+    private const WITH = ['users', 'manager'];
 
     public function index(): JsonResponse
     {

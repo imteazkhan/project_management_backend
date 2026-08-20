@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\Team;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTeamRequest extends FormRequest
 {
@@ -16,7 +17,7 @@ class StoreTeamRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'manager_id' => ['nullable', 'integer', 'exists:managers,id'],
+            'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'manager')],
             'members' => ['nullable', 'array'],
             'members.*.user_id' => ['required_with:members', 'integer', 'exists:users,id'],
             'members.*.role' => ['required_with:members', 'string', 'in:team_leader,manager,employee'],

@@ -10,17 +10,20 @@ class Employee extends Model
         'full_name',
         'email',
         'phone',
+        'avatar',
         'department_id',
         'designation_id',
         'manager_id',
         'joining_date',
         'status',
+        'is_manager',
     ];
 
     protected function casts(): array
     {
         return [
             'joining_date' => 'date',
+            'is_manager' => 'boolean',
         ];
     }
 
@@ -36,11 +39,11 @@ class Employee extends Model
 
     public function manager()
     {
-        return $this->belongsTo(Employee::class, 'manager_id');
+        return $this->belongsTo(User::class, 'manager_id');
     }
 
-    public function subordinates()
+    public function user()
     {
-        return $this->hasMany(Employee::class, 'manager_id');
+        return $this->hasOne(User::class, 'employee_id');
     }
 }

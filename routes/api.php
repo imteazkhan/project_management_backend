@@ -25,10 +25,59 @@ Route::middleware('auth:sanctum')->get('/user', function (\Illuminate\Http\Reque
 });
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('users', [UserController::class, 'index']);
-    Route::apiResource('teams', TeamController::class);
-    Route::apiResource('departments', DepartmentController::class);
-    Route::apiResource('designations', DesignationController::class);
-    Route::apiResource('employees', EmployeesController::class);
-    Route::apiResource('managers', ManagerController::class);
+    // Login-account management (Users & Manager modules) is admin-only end
+    // to end — managers/employees never see who else has a login.
+    Route::middleware('role:admin')->group(function () {
+        Route::get('users', [UserController::class, 'index']);
+        Route::get('users/{user}', [UserController::class, 'show']);
+        Route::post('users', [UserController::class, 'store']);
+        Route::put('users/{user}', [UserController::class, 'update']);
+        Route::delete('users/{user}', [UserController::class, 'destroy']);
+
+        Route::get('managers', [ManagerController::class, 'index']);
+        Route::get('managers/{manager}', [ManagerController::class, 'show']);
+        Route::post('managers', [ManagerController::class, 'store']);
+        Route::put('managers/{manager}', [ManagerController::class, 'update']);
+        Route::delete('managers/{manager}', [ManagerController::class, 'destroy']);
+    });
+
+    // Departments, designations and teams are shared reference data —
+    // every signed-in role can read them, only admins manage the lists.
+    Route::middleware('role:admin,manager,employee')->group(function () {
+        Route::get('departments', [DepartmentController::class, 'index']);
+        Route::get('departments/{department}', [DepartmentController::class, 'show']);
+
+        Route::get('designations', [DesignationController::class, 'index']);
+        Route::get('designations/{designation}', [DesignationController::class, 'show']);
+
+        Route::get('teams', [TeamController::class, 'index']);
+        Route::get('teams/{team}', [TeamController::class, 'show']);
+    });
+
+    // Employee directory: admins manage it, managers can browse it (to pick
+    // team members / assign managers). Individual employees don't get the
+    // full company directory.
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('employees', [EmployeesController::class, 'index']);
+        Route::get('employees/{employee}', [EmployeesController::class, 'show']);
+    });
+
+    // All writes on reference/organisational data stay admin-only.
+    Route::middleware('role:admin')->group(function () {
+        Route::post('departments', [DepartmentController::class, 'store']);
+        Route::put('departments/{department}', [DepartmentController::class, 'update']);
+        Route::delete('departments/{department}', [DepartmentController::class, 'destroy']);
+
+        Route::post('designations', [DesignationController::class, 'store']);
+        Route::put('designations/{designation}', [DesignationController::class, 'update']);
+        Route::delete('designations/{designation}', [DesignationController::class, 'destroy']);
+
+        Route::post('teams', [TeamController::class, 'store']);
+        Route::put('teams/{team}', [TeamController::class, 'update']);
+        Route::delete('teams/{team}', [TeamController::class, 'destroy']);
+
+        Route::post('employees', [EmployeesController::class, 'store']);
+        Route::put('employees/{employee}', [EmployeesController::class, 'update']);
+        Route::delete('employees/{employee}', [EmployeesController::class, 'destroy']);
+    });
 });

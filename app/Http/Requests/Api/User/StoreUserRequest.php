@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Requests\Api\Manager;
+namespace App\Http\Requests\Api\User;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
-class StoreManagerRequest extends FormRequest
+class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -21,6 +22,7 @@ class StoreManagerRequest extends FormRequest
                 'required',
                 Password::min(8)->mixedCase()->letters()->numbers()->symbols()->uncompromised(),
             ],
+            'role' => ['required', 'string', 'in:admin,manager,employee'],
             'employee_id' => ['nullable', 'integer', 'exists:employees,id', 'unique:users,employee_id'],
         ];
     }

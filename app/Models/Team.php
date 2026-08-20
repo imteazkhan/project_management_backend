@@ -21,6 +21,6 @@ class Team extends Model
 
     public function manager()
     {
-        return $this->belongsTo(Manager::class);
+        return $this->belongsTo(User::class, 'manager_id');
     }
 }

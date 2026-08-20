@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'employee_id',
         'email_verified_at',
         'is_active',
         'is_banned',
@@ -73,6 +74,11 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
@@ -81,6 +87,11 @@ class User extends Authenticatable
     public function isManager(): bool
     {
         return $this->role === 'manager';
+    }
+
+    public function isEmployee(): bool
+    {
+        return $this->role === 'employee';
     }
 
     public function roleInTeam(Team $team): ?string

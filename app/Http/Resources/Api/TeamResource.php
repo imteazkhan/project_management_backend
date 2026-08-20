@@ -20,7 +20,7 @@ class TeamResource extends JsonResource
             'description' => $this->description,
             'manager' => $this->whenLoaded('manager', fn () => $this->manager ? [
                 'id' => $this->manager->id,
-                'name' => $this->manager->user->name,
+                'name' => $this->manager->name,
             ] : null),
             'member_count' => $this->users->count(),
             'members' => $this->users->map(fn ($user) => [
