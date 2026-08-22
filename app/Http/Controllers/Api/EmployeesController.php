@@ -6,10 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Employee\StoreEmployeeRequest;
 use App\Http\Requests\Api\Employee\UpdateEmployeeRequest;
 use App\Http\Resources\Api\EmployeeResource;
+use App\Mail\EmployeeCredentialsMail;
 use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class EmployeesController extends Controller
@@ -37,8 +43,33 @@ class EmployeesController extends Controller
 
         $employee = Employee::create($data);
 
+        $message = 'Employee created successfully';
+
+        if (!User::where('email', $employee->email)->exists()) {
+            $password = Str::password(12);
+
+            $user = User::create([
+                'name' => $employee->full_name,
+                'email' => $employee->email,
+                'password' => Hash::make($password),
+                'role' => 'employee',
+                'employee_id' => $employee->id,
+            ]);
+
+            try {
+                Mail::to($user->email)->send(new EmployeeCredentialsMail($employee, $password));
+                $message .= ' and login credentials emailed to the employee';
+            } catch (\Throwable $e) {
+                Log::error('Failed to send employee credentials email', [
+                    'employee_id' => $employee->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $message .= ', but the credentials email could not be sent';
+            }
+        }
+
         return response()->json([
-            'message' => 'Employee created successfully',
+            'message' => $message,
             'employee' => new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user'])),
         ], 201);
     }
