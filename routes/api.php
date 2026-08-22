@@ -21,7 +21,16 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (\Illuminate\Http\Request $request) {
-    return $request->user();
+    $user = $request->user()->load('employee');
+
+    $data = $user->toArray();
+    $data['employee'] = $user->employee ? [
+        'id' => $user->employee->id,
+        'full_name' => $user->employee->full_name,
+        'email' => $user->employee->email,
+    ] : null;
+
+    return response()->json($data);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -60,6 +69,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin,manager')->group(function () {
         Route::get('employees', [EmployeesController::class, 'index']);
         Route::get('employees/{employee}', [EmployeesController::class, 'show']);
+    });
+
+    // Self-service profile: every signed-in role can view and edit their own
+    // contact details (name/email/phone/avatar). Organisational fields stay
+    // admin-managed through the employees endpoints above.
+    Route::middleware('role:admin,manager,employee')->group(function () {
+        Route::get('profile', [EmployeesController::class, 'me']);
+        Route::post('profile', [EmployeesController::class, 'updateMe']);
     });
 
     // All writes on reference/organisational data stay admin-only.

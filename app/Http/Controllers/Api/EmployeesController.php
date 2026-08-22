@@ -10,6 +10,7 @@ use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class EmployeesController extends Controller
 {
@@ -78,6 +79,52 @@ class EmployeesController extends Controller
 
         return response()->json([
             'message' => 'Employee deleted successfully',
+        ]);
+    }
+
+    // Self-service profile: any signed-in role can view and edit their own
+    // contact details. Organisational fields (department, designation,
+    // manager, status) stay admin-managed via the routes above.
+    public function me(Request $request): JsonResponse
+    {
+        $employee = $request->user()->employee;
+
+        return response()->json([
+            'employee' => $employee
+                ? new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user']))
+                : null,
+        ]);
+    }
+
+    public function updateMe(Request $request): JsonResponse
+    {
+        $employee = $request->user()->employee;
+
+        if (!$employee) {
+            return response()->json([
+                'message' => 'No employee profile is linked to this account.',
+            ], 404);
+        }
+
+        $data = $request->validate([
+            'full_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('employees', 'email')->ignore($employee->id)],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'avatar' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('avatar')) {
+            if ($employee->avatar) {
+                Storage::disk('public')->delete($employee->avatar);
+            }
+            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        $employee->update($data);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user'])),
         ]);
     }
 }
