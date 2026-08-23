@@ -11,7 +11,7 @@
                 <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
                     <tr>
                         <td style="background-color:#111827; padding:24px 32px;">
-                            <span style="color:#ffffff; font-size:18px; font-weight:bold;">Nanosoft Attendance System</span>
+                            <span style="color:#ffffff; font-size:18px; font-weight:bold;">Project Management System</span>
                         </td>
                     </tr>
                     <tr>
@@ -19,7 +19,7 @@
                             <p style="font-size:16px; margin:0 0 16px;">Dear {{ $name }},</p>
 
                             <p style="font-size:14px; line-height:1.6; margin:0 0 16px;">
-                                Welcome aboard. An account has been created for you on the Nanosoft Attendance System.
+                                Welcome aboard. An account has been created for you on the Nanosoft Project Management System.
                                 You can use the credentials below to sign in.
                             </p>
 
@@ -51,7 +51,7 @@
                     </tr>
                     <tr>
                         <td style="background-color:#f9fafb; padding:16px 32px; font-size:12px; color:#9ca3af;">
-                            &copy; {{ date('Y') }} Nanosoft Attendance System. All rights reserved.
+                            &copy; {{ date('Y') }} Nanosoft Project Management System. All rights reserved.
                         </td>
                     </tr>
                 </table>

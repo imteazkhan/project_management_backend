@@ -13,7 +13,6 @@ class Employee extends Model
         'avatar',
         'department_id',
         'designation_id',
-        'manager_id',
         'joining_date',
         'status',
         'is_manager',
@@ -35,11 +34,6 @@ class Employee extends Model
     public function designation()
     {
         return $this->belongsTo(Designation::class);
-    }
-
-    public function manager()
-    {
-        return $this->belongsTo(User::class, 'manager_id');
     }
 
     public function user()

@@ -7,6 +7,7 @@ use App\Http\Requests\Api\Team\StoreTeamRequest;
 use App\Http\Requests\Api\Team\UpdateTeamRequest;
 use App\Http\Resources\Api\TeamResource;
 use App\Models\Team;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 class TeamController extends Controller
@@ -19,6 +20,18 @@ class TeamController extends Controller
 
         return response()->json([
             'teams' => TeamResource::collection($teams),
+        ]);
+    }
+
+    // Minimal user list for the manager/member pickers on the team form —
+    // separate from the admin-only Users module so managers can staff teams
+    // without gaining access to full account administration.
+    public function assignableUsers(): JsonResponse
+    {
+        $users = User::orderBy('name')->get(['id', 'name', 'role']);
+
+        return response()->json([
+            'users' => $users,
         ]);
     }
 

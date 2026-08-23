@@ -29,10 +29,7 @@ class EmployeeResource extends JsonResource
                 'id' => $this->designation->id,
                 'name' => $this->designation->name,
             ] : null),
-            'manager' => $this->whenLoaded('manager', fn () => $this->manager ? [
-                'id' => $this->manager->id,
-                'name' => $this->manager->name,
-            ] : null),
+            'role' => $this->whenLoaded('user', fn () => $this->user?->role),
             'has_user_account' => $this->whenLoaded('user', fn () => $this->user !== null),
             'joining_date' => $this->joining_date?->format('Y-m-d'),
             'status' => $this->status,

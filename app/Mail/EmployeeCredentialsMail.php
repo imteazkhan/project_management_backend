@@ -20,7 +20,7 @@ class EmployeeCredentialsMail extends Mailable
     public function build(): self
     {
         return $this
-            ->subject('Your Nanosoft Attendance System account')
+            ->subject('Your Project Management System account')
             ->view('emails.employee-credentials')
             ->with([
                 'name' => $this->employee->full_name,

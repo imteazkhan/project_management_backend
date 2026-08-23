@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Api\Employee;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreEmployeeRequest extends FormRequest
 {
@@ -20,7 +19,7 @@ class StoreEmployeeRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:30'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'designation_id' => ['nullable', 'integer', 'exists:designations,id'],
-            'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'manager')],
+            'role' => ['required', 'string', 'in:admin,manager,employee'],
             'joining_date' => ['nullable', 'date'],
             'status' => ['required', 'string', 'in:active,inactive'],
             'avatar' => ['nullable', 'image', 'max:2048'],

@@ -22,7 +22,7 @@ class EmployeesController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $employees = Employee::with(['department', 'designation', 'manager', 'user'])
+        $employees = Employee::with(['department', 'designation', 'user'])
             ->when($request->boolean('unlinked'), fn ($query) => $query->doesntHave('user'))
             ->when($request->has('is_manager'), fn ($query) => $query->where('is_manager', $request->boolean('is_manager')))
             ->latest()
@@ -36,6 +36,8 @@ class EmployeesController extends Controller
     public function store(StoreEmployeeRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $role = $data['role'];
+        unset($data['role']);
 
         if ($request->hasFile('avatar')) {
             $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
@@ -45,14 +47,16 @@ class EmployeesController extends Controller
 
         $message = 'Employee created successfully';
 
-        if (!User::where('email', $employee->email)->exists()) {
+        $existingUser = User::where('email', $employee->email)->first();
+
+        if (!$existingUser) {
             $password = Str::password(12);
 
             $user = User::create([
                 'name' => $employee->full_name,
                 'email' => $employee->email,
                 'password' => Hash::make($password),
-                'role' => 'employee',
+                'role' => $role,
                 'employee_id' => $employee->id,
             ]);
 
@@ -66,24 +70,28 @@ class EmployeesController extends Controller
                 ]);
                 $message .= ', but the credentials email could not be sent';
             }
+        } else {
+            $existingUser->update(['role' => $role]);
         }
 
         return response()->json([
             'message' => $message,
-            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user'])),
+            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'user'])),
         ], 201);
     }
 
     public function show(Employee $employee): JsonResponse
     {
         return response()->json([
-            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user'])),
+            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'user'])),
         ]);
     }
 
     public function update(UpdateEmployeeRequest $request, Employee $employee): JsonResponse
     {
         $data = $request->validated();
+        $role = $data['role'];
+        unset($data['role']);
 
         if ($request->hasFile('avatar')) {
             if ($employee->avatar) {
@@ -93,10 +101,11 @@ class EmployeesController extends Controller
         }
 
         $employee->update($data);
+        $employee->user?->update(['role' => $role]);
 
         return response()->json([
             'message' => 'Employee updated successfully',
-            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user'])),
+            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'user'])),
         ]);
     }
 
@@ -115,14 +124,14 @@ class EmployeesController extends Controller
 
     // Self-service profile: any signed-in role can view and edit their own
     // contact details. Organisational fields (department, designation,
-    // manager, status) stay admin-managed via the routes above.
+    // role, status) stay admin-managed via the routes above.
     public function me(Request $request): JsonResponse
     {
         $employee = $request->user()->employee;
 
         return response()->json([
             'employee' => $employee
-                ? new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user']))
+                ? new EmployeeResource($employee->load(['department', 'designation', 'user']))
                 : null,
         ]);
     }
@@ -155,7 +164,7 @@ class EmployeesController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'manager', 'user'])),
+            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'user'])),
         ]);
     }
 }

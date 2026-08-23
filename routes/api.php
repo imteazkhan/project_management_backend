@@ -17,6 +17,7 @@ Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('logout-all', [AuthController::class, 'logoutAllDevices']);
         Route::post('refresh-token', [AuthController::class, 'refreshToken']);
+        Route::post('change-password', [AuthController::class, 'changePassword']);
     });
 });
 
@@ -50,6 +51,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('managers/{manager}', [ManagerController::class, 'destroy']);
     });
 
+    // Team membership: admins and managers can both create/edit teams and
+    // need a minimal user list to populate the manager/member pickers, but
+    // this stays separate from the admin-only Users module below. The
+    // static "assignable-users" route must be registered before the
+    // "teams/{team}" wildcard below so it isn't swallowed by the binding.
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('teams/assignable-users', [TeamController::class, 'assignableUsers']);
+        Route::post('teams', [TeamController::class, 'store']);
+        Route::put('teams/{team}', [TeamController::class, 'update']);
+    });
+
     // Departments, designations and teams are shared reference data —
     // every signed-in role can read them, only admins manage the lists.
     Route::middleware('role:admin,manager,employee')->group(function () {
@@ -64,8 +76,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Employee directory: admins manage it, managers can browse it (to pick
-    // team members / assign managers). Individual employees don't get the
-    // full company directory.
+    // team members). Individual employees don't get the full company
+    // directory.
     Route::middleware('role:admin,manager')->group(function () {
         Route::get('employees', [EmployeesController::class, 'index']);
         Route::get('employees/{employee}', [EmployeesController::class, 'show']);
@@ -89,8 +101,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('designations/{designation}', [DesignationController::class, 'update']);
         Route::delete('designations/{designation}', [DesignationController::class, 'destroy']);
 
-        Route::post('teams', [TeamController::class, 'store']);
-        Route::put('teams/{team}', [TeamController::class, 'update']);
         Route::delete('teams/{team}', [TeamController::class, 'destroy']);
 
         Route::post('employees', [EmployeesController::class, 'store']);
