@@ -11,6 +11,7 @@ use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -115,7 +116,10 @@ class EmployeesController extends Controller
             Storage::disk('public')->delete($employee->avatar);
         }
 
-        $employee->delete();
+        DB::transaction(function () use ($employee) {
+            $employee->user()->delete();
+            $employee->delete();
+        });
 
         return response()->json([
             'message' => 'Employee deleted successfully',
