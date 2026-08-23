@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DesignationController;
 use App\Http\Controllers\Api\EmployeesController;
 use App\Http\Controllers\Api\ManagerController;
+use App\Http\Controllers\Api\ProjectsController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +61,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('teams/assignable-users', [TeamController::class, 'assignableUsers']);
         Route::post('teams', [TeamController::class, 'store']);
         Route::put('teams/{team}', [TeamController::class, 'update']);
+
+        Route::post('projects', [ProjectsController::class, 'store']);
+        Route::put('projects/{project}', [ProjectsController::class, 'update']);
     });
 
     // Departments, designations and teams are shared reference data —
@@ -73,6 +77,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('teams', [TeamController::class, 'index']);
         Route::get('teams/{team}', [TeamController::class, 'show']);
+
+        Route::get('projects', [ProjectsController::class, 'index']);
+        Route::get('projects/{project}', [ProjectsController::class, 'show']);
     });
 
     // Employee directory: admins manage it, managers can browse it (to pick
@@ -102,6 +109,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('designations/{designation}', [DesignationController::class, 'destroy']);
 
         Route::delete('teams/{team}', [TeamController::class, 'destroy']);
+
+        Route::delete('projects/{project}', [ProjectsController::class, 'destroy']);
 
         Route::post('employees', [EmployeesController::class, 'store']);
         Route::put('employees/{employee}', [EmployeesController::class, 'update']);
