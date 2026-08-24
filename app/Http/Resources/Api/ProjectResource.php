@@ -20,7 +20,7 @@ class ProjectResource extends JsonResource
             'description' => $this->description,
             'status' => $this->status,
             'client' => $this->client,
-            'progress' => $this->progress,
+            'progress' => $this->progressPercent(),
             'start_date' => $this->start_date?->format('Y-m-d'),
             'end_date' => $this->end_date?->format('Y-m-d'),
             'team' => $this->whenLoaded('team', fn () => $this->team ? [

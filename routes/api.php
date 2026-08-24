@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DesignationController;
 use App\Http\Controllers\Api\EmployeesController;
 use App\Http\Controllers\Api\ManagerController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProjectsController;
+use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -66,6 +68,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('projects/{project}', [ProjectsController::class, 'update']);
     });
 
+    // Task assignment: admins and managers assign/edit/delete tasks and
+    // approve submitted work. Approval is the only path to 100% progress —
+    // an employee can never set that themselves (two-step verification).
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('tasks', [TaskController::class, 'store']);
+        Route::put('tasks/{task}', [TaskController::class, 'update']);
+        Route::delete('tasks/{task}', [TaskController::class, 'destroy']);
+        Route::post('tasks/{task}/approve', [TaskController::class, 'approve']);
+    });
+
     // Departments, designations and teams are shared reference data —
     // every signed-in role can read them, only admins manage the lists.
     Route::middleware('role:admin,manager,employee')->group(function () {
@@ -79,7 +91,26 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('teams/{team}', [TeamController::class, 'show']);
 
         Route::get('projects', [ProjectsController::class, 'index']);
+        // Static "my-summary" route must be registered before the
+        // "projects/{project}" wildcard below so it isn't swallowed by the
+        // binding. My Projects: an employee's own progress/contribution
+        // summary, scoped to projects they actually have tasks in.
+        Route::get('projects/my-summary', [ProjectsController::class, 'mySummary']);
         Route::get('projects/{project}', [ProjectsController::class, 'show']);
+
+        // My Tasks: employees only ever see their own assignments (scoped
+        // server-side); admins/managers can also filter by project. The
+        // status transitions here (start/submit/toggle sub-task) are the
+        // employee's own progress reporting on a task assigned to them.
+        Route::get('tasks', [TaskController::class, 'index']);
+        Route::get('tasks/{task}', [TaskController::class, 'show']);
+        Route::post('tasks/{task}/start', [TaskController::class, 'start']);
+        Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
+        Route::post('tasks/{task}/subtasks/{subtask}/toggle', [TaskController::class, 'toggleSubtask']);
+
+        Route::get('notifications', [NotificationController::class, 'index']);
+        Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
     });
 
     // Employee directory: admins manage it, managers can browse it (to pick
