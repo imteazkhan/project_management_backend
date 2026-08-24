@@ -31,6 +31,24 @@ class TaskController extends Controller
             $query->where('project_id', $request->integer('project_id'));
         }
 
+        // Contributions report (admin/manager): narrow the same task list by
+        // employee, status, and a due-date range.
+        if ($request->filled('assigned_to')) {
+            $query->where('assigned_to', $request->integer('assigned_to'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('due_date', '>=', $request->date('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('due_date', '<=', $request->date('date_to'));
+        }
+
         $tasks = $query->latest()->get();
 
         return response()->json(['tasks' => TaskResource::collection($tasks)]);
