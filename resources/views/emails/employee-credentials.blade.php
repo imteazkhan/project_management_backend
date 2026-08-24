@@ -27,7 +27,7 @@
                                 <tr>
                                     <td style="padding:16px 20px; font-size:14px;">
                                         <p style="margin:0 0 8px;"><strong>Email:</strong> {{ $email }}</p>
-                                        <p style="margin:0;"><strong>Temporary password:</strong> {{ $password }}</p>
+                                        <p style="margin:0;"><strong>Temporary password:</strong> <code style="background-color:#eef2ff; border:1px solid #c7d2fe; border-radius:4px; padding:2px 6px; font-family:'Courier New', monospace; font-size:14px; white-space:nowrap;">{{ $password }}</code></p>
                                     </td>
                                 </tr>
                             </table>
