@@ -14,6 +14,8 @@ class Project extends Model
         'end_date',
         'client',
         'progress',
+        'pdf',
+        'github_link',
         'team_id',
         'owner_id',
     ];

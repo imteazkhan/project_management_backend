@@ -104,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // employee's own progress reporting on a task assigned to them.
         Route::get('tasks', [TaskController::class, 'index']);
         Route::get('tasks/{task}', [TaskController::class, 'show']);
+        Route::get('tasks/{task}/activities', [TaskController::class, 'activities']);
         Route::post('tasks/{task}/start', [TaskController::class, 'start']);
         Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
         Route::post('tasks/{task}/subtasks/{subtask}/toggle', [TaskController::class, 'toggleSubtask']);

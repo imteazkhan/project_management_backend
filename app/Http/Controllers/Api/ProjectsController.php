@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProjectsController extends Controller
 {
@@ -122,6 +123,8 @@ class ProjectsController extends Controller
             'end_date' => $request->end_date,
             'client' => $request->client,
             'progress' => $request->progress ?? 0,
+            'pdf' => $request->hasFile('pdf') ? $request->file('pdf')->store('projects/pdfs', 'public') : null,
+            'github_link' => $request->github_link,
             'team_id' => $request->team_id,
             'owner_id' => $request->user()->id,
         ]);
@@ -134,7 +137,7 @@ class ProjectsController extends Controller
 
     public function update(UpdateProjectRequest $request, Project $project): JsonResponse
     {
-        $project->update([
+        $data = [
             'name' => $request->name,
             'description' => $request->description,
             'status' => $request->status,
@@ -142,8 +145,18 @@ class ProjectsController extends Controller
             'end_date' => $request->end_date,
             'client' => $request->client,
             'progress' => $request->progress ?? 0,
+            'github_link' => $request->github_link,
             'team_id' => $request->team_id,
-        ]);
+        ];
+
+        if ($request->hasFile('pdf')) {
+            if ($project->pdf) {
+                Storage::disk('public')->delete($project->pdf);
+            }
+            $data['pdf'] = $request->file('pdf')->store('projects/pdfs', 'public');
+        }
+
+        $project->update($data);
 
         return response()->json([
             'message' => 'Project updated successfully',
@@ -153,6 +166,10 @@ class ProjectsController extends Controller
 
     public function destroy(Project $project): JsonResponse
     {
+        if ($project->pdf) {
+            Storage::disk('public')->delete($project->pdf);
+        }
+
         $project->delete();
 
         return response()->json([

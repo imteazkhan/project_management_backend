@@ -18,6 +18,7 @@ class Task extends Model
         'due_date',
         'progress',
         'position',
+        'started_at',
         'submitted_at',
         'approved_at',
         'approved_by',
@@ -27,6 +28,7 @@ class Task extends Model
     {
         return [
             'due_date' => 'date',
+            'started_at' => 'datetime',
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
         ];
@@ -60,5 +62,10 @@ class Task extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function activities()
+    {
+        return $this->hasMany(TaskActivityLog::class)->latest();
     }
 }

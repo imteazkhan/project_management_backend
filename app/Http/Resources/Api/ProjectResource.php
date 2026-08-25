@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ProjectResource extends JsonResource
 {
@@ -21,6 +22,8 @@ class ProjectResource extends JsonResource
             'status' => $this->status,
             'client' => $this->client,
             'progress' => $this->progressPercent(),
+            'pdf' => $this->pdf ? Storage::disk('public')->url($this->pdf) : null,
+            'github_link' => $this->github_link,
             'start_date' => $this->start_date?->format('Y-m-d'),
             'end_date' => $this->end_date?->format('Y-m-d'),
             'team' => $this->whenLoaded('team', fn () => $this->team ? [
