@@ -76,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('tasks/{task}', [TaskController::class, 'update']);
         Route::delete('tasks/{task}', [TaskController::class, 'destroy']);
         Route::post('tasks/{task}/approve', [TaskController::class, 'approve']);
+        Route::post('tasks/{task}/reject', [TaskController::class, 'reject']);
     });
 
     // Departments, designations and teams are shared reference data —
@@ -108,6 +109,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('tasks/{task}/start', [TaskController::class, 'start']);
         Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
         Route::post('tasks/{task}/subtasks/{subtask}/toggle', [TaskController::class, 'toggleSubtask']);
+        // Self-reported contribution: work done without a pre-assigned task,
+        // submitted straight for manager/admin review.
+        Route::post('tasks/contribute', [TaskController::class, 'contribute']);
 
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);

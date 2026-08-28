@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Task\ContributeTaskRequest;
 use App\Http\Requests\Api\Task\StoreTaskRequest;
 use App\Http\Requests\Api\Task\UpdateTaskRequest;
 use App\Http\Resources\Api\TaskActivityLogResource;
@@ -10,12 +11,13 @@ use App\Http\Resources\Api\TaskResource;
 use App\Models\Notification;
 use App\Models\Task;
 use App\Models\TaskActivityLog;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
-    private const WITH = ['project', 'assignee', 'creator', 'approver', 'subtasks.assignee'];
+    private const WITH = ['project', 'assignee', 'creator', 'approver', 'rejecter', 'subtasks.assignee'];
 
     public function index(Request $request): JsonResponse
     {
@@ -94,6 +96,45 @@ class TaskController extends Controller
 
         return response()->json([
             'message' => 'Task assigned successfully',
+            'task' => new TaskResource($task->load(self::WITH)),
+        ], 201);
+    }
+
+    // Employee (or any role): self-report work that was never pre-assigned
+    // by a manager/admin. Goes straight to "submitted" (90%) — the employee
+    // already did the work, so there's no start/in-progress step — and
+    // awaits the same approve()/reject() review as a normal task.
+    public function contribute(ContributeTaskRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $task = Task::create([
+            'project_id' => $request->project_id,
+            'assigned_to' => $user->id,
+            'created_by' => $user->id,
+            'title' => $request->title,
+            'description' => $request->description ?? '',
+            'priority' => 'medium',
+            'status' => 'submitted',
+            'progress' => 90,
+            'submitted_at' => now(),
+        ]);
+
+        $this->logActivity($task, $user->id, 'submitted', null, 'submitted', 'Self-reported contribution');
+
+        $reviewers = User::whereIn('role', ['admin', 'manager'])->get();
+        foreach ($reviewers as $reviewer) {
+            Notification::create([
+                'user_id' => $reviewer->id,
+                'type' => 'task_pending_approval',
+                'title' => 'New contribution to review',
+                'message' => "{$user->name} submitted a contribution \"{$task->title}\" for your review.",
+                'task_id' => $task->id,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Contribution submitted for review',
             'task' => new TaskResource($task->load(self::WITH)),
         ], 201);
     }
@@ -214,6 +255,36 @@ class TaskController extends Controller
         ]);
 
         $this->logActivity($task, $request->user()->id, 'approved', 'submitted', 'completed');
+
+        return response()->json(['task' => new TaskResource($task->load(self::WITH))]);
+    }
+
+    // Manager/Admin: reject a submitted task, sending it back to the
+    // employee with an optional reason instead of marking it complete.
+    public function reject(Request $request, Task $task): JsonResponse
+    {
+        abort_unless($task->status === 'submitted', 422, 'Task is not pending review.');
+
+        $reason = $request->string('reason')->toString() ?: null;
+
+        $task->update([
+            'status' => 'rejected',
+            'rejected_at' => now(),
+            'rejected_by' => $request->user()->id,
+            'rejection_reason' => $reason,
+        ]);
+
+        Notification::create([
+            'user_id' => $task->assigned_to,
+            'type' => 'task_rejected',
+            'title' => 'Task rejected',
+            'message' => $reason
+                ? "Your task \"{$task->title}\" was rejected: {$reason}"
+                : "Your task \"{$task->title}\" was rejected.",
+            'task_id' => $task->id,
+        ]);
+
+        $this->logActivity($task, $request->user()->id, 'rejected', 'submitted', 'rejected', $reason);
 
         return response()->json(['task' => new TaskResource($task->load(self::WITH))]);
     }

@@ -42,6 +42,12 @@ class TaskResource extends JsonResource
             ] : null),
             'submitted_at' => $this->submitted_at,
             'approved_at' => $this->approved_at,
+            'rejected_at' => $this->rejected_at,
+            'rejected_by' => $this->whenLoaded('rejecter', fn () => $this->rejecter ? [
+                'id' => $this->rejecter->id,
+                'name' => $this->rejecter->name,
+            ] : null),
+            'rejection_reason' => $this->rejection_reason,
             'subtasks' => TaskResource::collection($this->whenLoaded('subtasks')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
