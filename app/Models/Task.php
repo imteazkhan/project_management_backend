@@ -25,6 +25,9 @@ class Task extends Model
         'rejected_at',
         'rejected_by',
         'rejection_reason',
+        'paused_from_status',
+        'is_edited',
+        'is_added_later',
     ];
 
     protected function casts(): array
@@ -35,6 +38,8 @@ class Task extends Model
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
+            'is_edited' => 'boolean',
+            'is_added_later' => 'boolean',
         ];
     }
 

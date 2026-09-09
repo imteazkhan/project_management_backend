@@ -163,9 +163,97 @@ class TaskController extends Controller
 
     public function destroy(Task $task): JsonResponse
     {
+        abort_if($task->parent_id !== null, 422, 'Sub-tasks cannot be deleted. Pause them instead.');
+
         $task->delete();
 
         return response()->json(['message' => 'Task deleted successfully']);
+    }
+
+    // Manager/Admin: add a new sub-task to an existing task after the task
+    // was already assigned. Flagged is_added_later so the employee can see
+    // it wasn't part of the original checklist.
+    public function addSubtask(Request $request, Task $task): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+        ]);
+
+        $position = $task->subtasks()->max('position');
+
+        $subtask = $task->subtasks()->create([
+            'project_id' => $task->project_id,
+            'assigned_to' => $task->assigned_to,
+            'created_by' => $request->user()->id,
+            'title' => $data['title'],
+            'description' => '',
+            'status' => 'not_started',
+            'progress' => 0,
+            'position' => $position === null ? 0 : $position + 1,
+            'is_added_later' => true,
+        ]);
+
+        $this->logActivity($task, $request->user()->id, 'subtask_added', null, null, "Sub-task \"{$subtask->title}\" added");
+
+        return response()->json([
+            'message' => 'Sub-task added successfully',
+            'task' => new TaskResource($task->fresh()->load(self::WITH)),
+        ], 201);
+    }
+
+    // Manager/Admin: rename an existing sub-task. Flagged is_edited so the
+    // employee can see the checklist item changed after it was first set.
+    public function updateSubtask(Request $request, Task $task, Task $subtask): JsonResponse
+    {
+        abort_unless($subtask->parent_id === $task->id, 404);
+
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+        ]);
+
+        if ($data['title'] !== $subtask->title) {
+            $subtask->update([
+                'title' => $data['title'],
+                'is_edited' => true,
+            ]);
+
+            $this->logActivity($task, $request->user()->id, 'subtask_edited', null, null, "Sub-task renamed to \"{$data['title']}\"");
+        }
+
+        return response()->json([
+            'message' => 'Sub-task updated successfully',
+            'task' => new TaskResource($task->fresh()->load(self::WITH)),
+        ]);
+    }
+
+    // Manager/Admin: sub-tasks can't be deleted, only paused/resumed. Pausing
+    // preserves the status it was in so resuming puts it right back.
+    public function pauseSubtask(Request $request, Task $task, Task $subtask): JsonResponse
+    {
+        abort_unless($subtask->parent_id === $task->id, 404);
+
+        if ($subtask->status === 'paused') {
+            $subtask->update([
+                'status' => $subtask->paused_from_status ?? 'not_started',
+                'paused_from_status' => null,
+            ]);
+            $action = 'resumed';
+        } else {
+            abort_if($subtask->status === 'completed', 422, 'Completed sub-tasks cannot be paused.');
+
+            $subtask->update([
+                'paused_from_status' => $subtask->status,
+                'status' => 'paused',
+            ]);
+            $action = 'paused';
+        }
+
+        $this->logActivity($task, $request->user()->id, "subtask_{$action}", null, null, "Sub-task \"{$subtask->title}\" {$action}");
+
+        return response()->json([
+            'message' => "Sub-task {$action} successfully",
+            'task' => new TaskResource($task->fresh()->load(self::WITH)),
+        ]);
     }
 
     // Employee: begin work on an assigned task. not_started (0%) -> in_progress (10%).
@@ -189,6 +277,7 @@ class TaskController extends Controller
         $this->authorizeOwner($request, $task);
         abort_unless($subtask->parent_id === $task->id, 404);
         abort_unless($task->status === 'in_progress', 422, 'Start the task before updating sub-tasks.');
+        abort_if($subtask->status === 'paused', 422, 'This sub-task is paused. Ask your manager to resume it first.');
 
         $wasCompleted = $subtask->status === 'completed';
 

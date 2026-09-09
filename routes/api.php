@@ -77,6 +77,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('tasks/{task}', [TaskController::class, 'destroy']);
         Route::post('tasks/{task}/approve', [TaskController::class, 'approve']);
         Route::post('tasks/{task}/reject', [TaskController::class, 'reject']);
+        // Sub-tasks can be added or renamed after the task is assigned, but
+        // never deleted — pausing is the only way to take one off the plate.
+        Route::post('tasks/{task}/subtasks', [TaskController::class, 'addSubtask']);
+        Route::put('tasks/{task}/subtasks/{subtask}', [TaskController::class, 'updateSubtask']);
+        Route::post('tasks/{task}/subtasks/{subtask}/pause', [TaskController::class, 'pauseSubtask']);
     });
 
     // Departments, designations and teams are shared reference data —
@@ -98,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // summary, scoped to projects they actually have tasks in.
         Route::get('projects/my-summary', [ProjectsController::class, 'mySummary']);
         Route::get('projects/{project}', [ProjectsController::class, 'show']);
+        Route::get('projects/{project}/analytics', [ProjectsController::class, 'analytics']);
 
         // My Tasks: employees only ever see their own assignments (scoped
         // server-side); admins/managers can also filter by project. The

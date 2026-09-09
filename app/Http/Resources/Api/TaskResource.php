@@ -48,6 +48,8 @@ class TaskResource extends JsonResource
                 'name' => $this->rejecter->name,
             ] : null),
             'rejection_reason' => $this->rejection_reason,
+            'is_edited' => (bool) $this->is_edited,
+            'is_added_later' => (bool) $this->is_added_later,
             'subtasks' => TaskResource::collection($this->whenLoaded('subtasks')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
