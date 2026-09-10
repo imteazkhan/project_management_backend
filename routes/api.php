@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\AttendanceSettingController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DesignationController;
@@ -112,6 +114,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);
         Route::post('notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+        // Attendance: every signed-in role can check themselves in/out and
+        // read the resulting history — employees only ever see their own
+        // records (scoped server-side), admins/managers see everyone's.
+        Route::get('attendance', [AttendanceController::class, 'index']);
+        Route::get('attendance/today', [AttendanceController::class, 'today']);
+        Route::post('attendance/check-in', [AttendanceController::class, 'checkIn']);
+        Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
+        Route::get('attendance-settings', [AttendanceSettingController::class, 'show']);
     });
 
     // Employee directory: admins manage it, managers can browse it (to pick
@@ -147,5 +158,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('employees', [EmployeesController::class, 'store']);
         Route::put('employees/{employee}', [EmployeesController::class, 'update']);
         Route::delete('employees/{employee}', [EmployeesController::class, 'destroy']);
+
+        Route::put('attendance-settings', [AttendanceSettingController::class, 'update']);
     });
 });

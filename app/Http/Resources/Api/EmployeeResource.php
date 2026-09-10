@@ -31,6 +31,7 @@ class EmployeeResource extends JsonResource
             ] : null),
             'role' => $this->whenLoaded('user', fn () => $this->user?->role),
             'has_user_account' => $this->whenLoaded('user', fn () => $this->user !== null),
+            'user_id' => $this->whenLoaded('user', fn () => $this->user?->id),
             'joining_date' => $this->joining_date?->format('Y-m-d'),
             'status' => $this->status,
             'is_manager' => $this->is_manager,
