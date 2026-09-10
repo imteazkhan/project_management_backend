@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DesignationController;
 use App\Http\Controllers\Api\EmployeesController;
+use App\Http\Controllers\Api\LeaveController;
+use App\Http\Controllers\Api\LeaveQuotaController;
 use App\Http\Controllers\Api\ManagerController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProjectsController;
@@ -133,6 +135,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('attendance/check-in', [AttendanceController::class, 'checkIn']);
         Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
         Route::get('attendance-settings', [AttendanceSettingController::class, 'show']);
+
+        // Leave: employees apply for and cancel their own requests, and can
+        // read their own balance; admins/managers see the requests their
+        // role is scoped to (see LeaveController@index).
+        Route::get('leave', [LeaveController::class, 'index']);
+        Route::post('leave', [LeaveController::class, 'store']);
+        Route::post('leave/{leave}/cancel', [LeaveController::class, 'cancel']);
+        Route::get('leave-balances', [LeaveController::class, 'balances']);
+        Route::get('leave-quotas', [LeaveQuotaController::class, 'show']);
+    });
+
+    // Manager first-stage decision on a leave request from their own team.
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('leave/{leave}/manager-approve', [LeaveController::class, 'managerApprove']);
+        Route::post('leave/{leave}/manager-reject', [LeaveController::class, 'managerReject']);
     });
 
     // Employee directory: admins manage it, managers can browse it (to pick
@@ -170,5 +187,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('employees/{employee}', [EmployeesController::class, 'destroy']);
 
         Route::put('attendance-settings', [AttendanceSettingController::class, 'update']);
+
+        Route::post('leave/{leave}/approve', [LeaveController::class, 'approve']);
+        Route::post('leave/{leave}/reject', [LeaveController::class, 'reject']);
+        Route::put('leave-quotas', [LeaveQuotaController::class, 'update']);
     });
 });

@@ -102,4 +102,17 @@ class User extends Authenticatable
             ?->pivot
             ?->role;
     }
+
+    // The manager who approves this user's leave requests: whoever manages
+    // one of their teams, excluding themselves (a manager doesn't approve
+    // their own leave — that goes straight to admin).
+    public function approvingManager(): ?User
+    {
+        return $this->teams()
+            ->with('manager')
+            ->get()
+            ->pluck('manager')
+            ->filter(fn (?User $manager) => $manager && $manager->id !== $this->id)
+            ->first();
+    }
 }
