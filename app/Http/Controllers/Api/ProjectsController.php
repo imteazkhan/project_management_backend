@@ -8,6 +8,7 @@ use App\Http\Requests\Api\Project\UpdateProjectRequest;
 use App\Http\Resources\Api\ProjectResource;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -110,6 +111,60 @@ class ProjectsController extends Controller
     {
         return response()->json([
             'project' => new ProjectResource($project->load(self::withProgress())),
+        ]);
+    }
+
+    // Analytics tab: task status breakdown and each assignee's share of the
+    // project's assigned tasks (e.g. "User A did 10 of 15 (67%)"), computed
+    // here so the frontend only ever renders numbers it's given.
+    public function analytics(Project $project): JsonResponse
+    {
+        $tasks = $project->tasks()
+            ->whereNull('parent_id')
+            ->get(['id', 'status', 'assigned_to']);
+
+        $total = $tasks->count();
+
+        $statuses = ['not_started', 'in_progress', 'submitted', 'completed', 'rejected'];
+        $taskStatusBreakdown = collect($statuses)->map(function ($status) use ($tasks, $total) {
+            $count = $tasks->where('status', $status)->count();
+
+            return [
+                'status' => $status,
+                'count' => $count,
+                'percent' => $total > 0 ? (int) round(($count / $total) * 100) : 0,
+            ];
+        })->values();
+
+        $assignedTasks = $tasks->whereNotNull('assigned_to');
+        $totalAssigned = $assignedTasks->count();
+
+        $assignees = $totalAssigned > 0
+            ? User::whereIn('id', $assignedTasks->pluck('assigned_to')->unique())->get(['id', 'name'])->keyBy('id')
+            : collect();
+
+        $assigneeBreakdown = $assignedTasks
+            ->groupBy('assigned_to')
+            ->map(function ($group, $userId) use ($assignees, $totalAssigned) {
+                $completed = $group->where('status', 'completed')->count();
+                $count = $group->count();
+
+                return [
+                    'id' => (int) $userId,
+                    'name' => $assignees->get($userId)?->name ?? 'Unknown',
+                    'total' => $count,
+                    'completed' => $completed,
+                    'percent' => round(($count / $totalAssigned) * 100, 1),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+
+        return response()->json([
+            'total' => $total,
+            'total_assigned' => $totalAssigned,
+            'task_status_breakdown' => $taskStatusBreakdown,
+            'assignee_breakdown' => $assigneeBreakdown,
         ]);
     }
 

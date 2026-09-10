@@ -22,6 +22,12 @@ class Task extends Model
         'submitted_at',
         'approved_at',
         'approved_by',
+        'rejected_at',
+        'rejected_by',
+        'rejection_reason',
+        'paused_from_status',
+        'is_edited',
+        'is_added_later',
     ];
 
     protected function casts(): array
@@ -31,6 +37,9 @@ class Task extends Model
             'started_at' => 'datetime',
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'is_edited' => 'boolean',
+            'is_added_later' => 'boolean',
         ];
     }
 
@@ -62,6 +71,11 @@ class Task extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     public function activities()

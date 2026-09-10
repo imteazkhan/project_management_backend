@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Task\ContributeTaskRequest;
 use App\Http\Requests\Api\Task\StoreTaskRequest;
 use App\Http\Requests\Api\Task\UpdateTaskRequest;
 use App\Http\Resources\Api\TaskActivityLogResource;
@@ -10,12 +11,13 @@ use App\Http\Resources\Api\TaskResource;
 use App\Models\Notification;
 use App\Models\Task;
 use App\Models\TaskActivityLog;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
-    private const WITH = ['project', 'assignee', 'creator', 'approver', 'subtasks.assignee'];
+    private const WITH = ['project', 'assignee', 'creator', 'approver', 'rejecter', 'subtasks.assignee'];
 
     public function index(Request $request): JsonResponse
     {
@@ -98,6 +100,45 @@ class TaskController extends Controller
         ], 201);
     }
 
+    // Employee (or any role): self-report work that was never pre-assigned
+    // by a manager/admin. Goes straight to "submitted" (90%) — the employee
+    // already did the work, so there's no start/in-progress step — and
+    // awaits the same approve()/reject() review as a normal task.
+    public function contribute(ContributeTaskRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $task = Task::create([
+            'project_id' => $request->project_id,
+            'assigned_to' => $user->id,
+            'created_by' => $user->id,
+            'title' => $request->title,
+            'description' => $request->description ?? '',
+            'priority' => 'medium',
+            'status' => 'submitted',
+            'progress' => 90,
+            'submitted_at' => now(),
+        ]);
+
+        $this->logActivity($task, $user->id, 'submitted', null, 'submitted', 'Self-reported contribution');
+
+        $reviewers = User::whereIn('role', ['admin', 'manager'])->get();
+        foreach ($reviewers as $reviewer) {
+            Notification::create([
+                'user_id' => $reviewer->id,
+                'type' => 'task_pending_approval',
+                'title' => 'New contribution to review',
+                'message' => "{$user->name} submitted a contribution \"{$task->title}\" for your review.",
+                'task_id' => $task->id,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Contribution submitted for review',
+            'task' => new TaskResource($task->load(self::WITH)),
+        ], 201);
+    }
+
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
         $previousAssignee = $task->assigned_to;
@@ -122,9 +163,97 @@ class TaskController extends Controller
 
     public function destroy(Task $task): JsonResponse
     {
+        abort_if($task->parent_id !== null, 422, 'Sub-tasks cannot be deleted. Pause them instead.');
+
         $task->delete();
 
         return response()->json(['message' => 'Task deleted successfully']);
+    }
+
+    // Manager/Admin: add a new sub-task to an existing task after the task
+    // was already assigned. Flagged is_added_later so the employee can see
+    // it wasn't part of the original checklist.
+    public function addSubtask(Request $request, Task $task): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+        ]);
+
+        $position = $task->subtasks()->max('position');
+
+        $subtask = $task->subtasks()->create([
+            'project_id' => $task->project_id,
+            'assigned_to' => $task->assigned_to,
+            'created_by' => $request->user()->id,
+            'title' => $data['title'],
+            'description' => '',
+            'status' => 'not_started',
+            'progress' => 0,
+            'position' => $position === null ? 0 : $position + 1,
+            'is_added_later' => true,
+        ]);
+
+        $this->logActivity($task, $request->user()->id, 'subtask_added', null, null, "Sub-task \"{$subtask->title}\" added");
+
+        return response()->json([
+            'message' => 'Sub-task added successfully',
+            'task' => new TaskResource($task->fresh()->load(self::WITH)),
+        ], 201);
+    }
+
+    // Manager/Admin: rename an existing sub-task. Flagged is_edited so the
+    // employee can see the checklist item changed after it was first set.
+    public function updateSubtask(Request $request, Task $task, Task $subtask): JsonResponse
+    {
+        abort_unless($subtask->parent_id === $task->id, 404);
+
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+        ]);
+
+        if ($data['title'] !== $subtask->title) {
+            $subtask->update([
+                'title' => $data['title'],
+                'is_edited' => true,
+            ]);
+
+            $this->logActivity($task, $request->user()->id, 'subtask_edited', null, null, "Sub-task renamed to \"{$data['title']}\"");
+        }
+
+        return response()->json([
+            'message' => 'Sub-task updated successfully',
+            'task' => new TaskResource($task->fresh()->load(self::WITH)),
+        ]);
+    }
+
+    // Manager/Admin: sub-tasks can't be deleted, only paused/resumed. Pausing
+    // preserves the status it was in so resuming puts it right back.
+    public function pauseSubtask(Request $request, Task $task, Task $subtask): JsonResponse
+    {
+        abort_unless($subtask->parent_id === $task->id, 404);
+
+        if ($subtask->status === 'paused') {
+            $subtask->update([
+                'status' => $subtask->paused_from_status ?? 'not_started',
+                'paused_from_status' => null,
+            ]);
+            $action = 'resumed';
+        } else {
+            abort_if($subtask->status === 'completed', 422, 'Completed sub-tasks cannot be paused.');
+
+            $subtask->update([
+                'paused_from_status' => $subtask->status,
+                'status' => 'paused',
+            ]);
+            $action = 'paused';
+        }
+
+        $this->logActivity($task, $request->user()->id, "subtask_{$action}", null, null, "Sub-task \"{$subtask->title}\" {$action}");
+
+        return response()->json([
+            'message' => "Sub-task {$action} successfully",
+            'task' => new TaskResource($task->fresh()->load(self::WITH)),
+        ]);
     }
 
     // Employee: begin work on an assigned task. not_started (0%) -> in_progress (10%).
@@ -148,6 +277,7 @@ class TaskController extends Controller
         $this->authorizeOwner($request, $task);
         abort_unless($subtask->parent_id === $task->id, 404);
         abort_unless($task->status === 'in_progress', 422, 'Start the task before updating sub-tasks.');
+        abort_if($subtask->status === 'paused', 422, 'This sub-task is paused. Ask your manager to resume it first.');
 
         $wasCompleted = $subtask->status === 'completed';
 
@@ -214,6 +344,36 @@ class TaskController extends Controller
         ]);
 
         $this->logActivity($task, $request->user()->id, 'approved', 'submitted', 'completed');
+
+        return response()->json(['task' => new TaskResource($task->load(self::WITH))]);
+    }
+
+    // Manager/Admin: reject a submitted task, sending it back to the
+    // employee with an optional reason instead of marking it complete.
+    public function reject(Request $request, Task $task): JsonResponse
+    {
+        abort_unless($task->status === 'submitted', 422, 'Task is not pending review.');
+
+        $reason = $request->string('reason')->toString() ?: null;
+
+        $task->update([
+            'status' => 'rejected',
+            'rejected_at' => now(),
+            'rejected_by' => $request->user()->id,
+            'rejection_reason' => $reason,
+        ]);
+
+        Notification::create([
+            'user_id' => $task->assigned_to,
+            'type' => 'task_rejected',
+            'title' => 'Task rejected',
+            'message' => $reason
+                ? "Your task \"{$task->title}\" was rejected: {$reason}"
+                : "Your task \"{$task->title}\" was rejected.",
+            'task_id' => $task->id,
+        ]);
+
+        $this->logActivity($task, $request->user()->id, 'rejected', 'submitted', 'rejected', $reason);
 
         return response()->json(['task' => new TaskResource($task->load(self::WITH))]);
     }

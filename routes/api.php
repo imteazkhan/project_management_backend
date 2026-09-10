@@ -78,6 +78,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('tasks/{task}', [TaskController::class, 'update']);
         Route::delete('tasks/{task}', [TaskController::class, 'destroy']);
         Route::post('tasks/{task}/approve', [TaskController::class, 'approve']);
+        Route::post('tasks/{task}/reject', [TaskController::class, 'reject']);
+        // Sub-tasks can be added or renamed after the task is assigned, but
+        // never deleted — pausing is the only way to take one off the plate.
+        Route::post('tasks/{task}/subtasks', [TaskController::class, 'addSubtask']);
+        Route::put('tasks/{task}/subtasks/{subtask}', [TaskController::class, 'updateSubtask']);
+        Route::post('tasks/{task}/subtasks/{subtask}/pause', [TaskController::class, 'pauseSubtask']);
     });
 
     // Departments, designations and teams are shared reference data —
@@ -99,6 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // summary, scoped to projects they actually have tasks in.
         Route::get('projects/my-summary', [ProjectsController::class, 'mySummary']);
         Route::get('projects/{project}', [ProjectsController::class, 'show']);
+        Route::get('projects/{project}/analytics', [ProjectsController::class, 'analytics']);
 
         // My Tasks: employees only ever see their own assignments (scoped
         // server-side); admins/managers can also filter by project. The
@@ -110,6 +117,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('tasks/{task}/start', [TaskController::class, 'start']);
         Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
         Route::post('tasks/{task}/subtasks/{subtask}/toggle', [TaskController::class, 'toggleSubtask']);
+        // Self-reported contribution: work done without a pre-assigned task,
+        // submitted straight for manager/admin review.
+        Route::post('tasks/contribute', [TaskController::class, 'contribute']);
 
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);
