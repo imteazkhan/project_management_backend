@@ -17,6 +17,7 @@ class EmployeeResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'user_id' => $this->whenLoaded('user', fn () => $this->user?->id),
             'full_name' => $this->full_name,
             'email' => $this->email,
             'phone' => $this->phone,
