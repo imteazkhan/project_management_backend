@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
@@ -36,6 +37,9 @@ Route::middleware('auth:sanctum')->get('/user', function (\Illuminate\Http\Reque
         'id' => $user->employee->id,
         'full_name' => $user->employee->full_name,
         'email' => $user->employee->email,
+        'avatar' => $user->employee->avatar
+            ? Storage::disk('public')->url($user->employee->avatar)
+            : null,
     ] : null;
 
     return response()->json($data);
@@ -120,8 +124,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('tasks/{task}/submit', [TaskController::class, 'submit']);
         Route::post('tasks/{task}/subtasks/{subtask}/toggle', [TaskController::class, 'toggleSubtask']);
         // Self-reported contribution: work done without a pre-assigned task,
-        // submitted straight for manager/admin review.
+        // submitted straight for manager/admin review. The reporter can
+        // still edit/delete it themselves while it's awaiting review; once
+        // approved/rejected it's locked (enforced in the controller).
         Route::post('tasks/contribute', [TaskController::class, 'contribute']);
+        Route::put('tasks/{task}/contribute', [TaskController::class, 'updateContribution']);
+        Route::delete('tasks/{task}/contribute', [TaskController::class, 'deleteContribution']);
 
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);

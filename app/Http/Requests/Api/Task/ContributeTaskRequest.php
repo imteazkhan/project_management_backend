@@ -18,6 +18,7 @@ class ContributeTaskRequest extends FormRequest
             'project_id' => ['required', 'integer', Rule::exists('projects', 'id')],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
         ];
     }
 }

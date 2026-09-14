@@ -117,6 +117,7 @@ class TaskController extends Controller
             'priority' => 'medium',
             'status' => 'submitted',
             'progress' => 90,
+            'due_date' => $request->date,
             'submitted_at' => now(),
         ]);
 
@@ -137,6 +138,45 @@ class TaskController extends Controller
             'message' => 'Contribution submitted for review',
             'task' => new TaskResource($task->load(self::WITH)),
         ], 201);
+    }
+
+    // Self-reported contribution: the employee who logged it can still fix
+    // a typo or the wrong date while it's awaiting review. Once a
+    // manager/admin has approved or rejected it, it's locked — editing an
+    // already-reviewed record would make the review meaningless.
+    public function updateContribution(ContributeTaskRequest $request, Task $task): JsonResponse
+    {
+        $this->authorizeContributionOwner($request, $task);
+
+        $task->update([
+            'project_id' => $request->project_id,
+            'title' => $request->title,
+            'description' => $request->description ?? '',
+            'due_date' => $request->date,
+        ]);
+
+        return response()->json([
+            'message' => 'Contribution updated successfully',
+            'task' => new TaskResource($task->fresh()->load(self::WITH)),
+        ]);
+    }
+
+    public function deleteContribution(Request $request, Task $task): JsonResponse
+    {
+        $this->authorizeContributionOwner($request, $task);
+
+        $task->delete();
+
+        return response()->json(['message' => 'Contribution deleted successfully']);
+    }
+
+    private function authorizeContributionOwner(Request $request, Task $task): void
+    {
+        $user = $request->user();
+
+        abort_unless($task->parent_id === null, 404);
+        abort_unless($task->created_by === $user->id && $task->assigned_to === $user->id, 403, 'This contribution is not yours to edit.');
+        abort_unless($task->status === 'submitted', 422, 'This contribution has already been reviewed and can no longer be changed.');
     }
 
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse

@@ -72,7 +72,7 @@ class EmployeesController extends Controller
                 $message .= ', but the credentials email could not be sent';
             }
         } else {
-            $existingUser->update(['role' => $role]);
+            $existingUser->update(['role' => $role, 'employee_id' => $employee->id]);
         }
 
         return response()->json([
@@ -126,29 +126,42 @@ class EmployeesController extends Controller
         ]);
     }
 
+    // Some accounts (e.g. created directly via the Users admin tool rather
+    // than the Employees "Add Employee" flow) reach this endpoint with no
+    // linked employee row, which used to block them from ever editing their
+    // own contact details or avatar. Auto-provision + link one on first
+    // touch so every signed-in role can always manage their own profile.
+    private function ensureEmployeeForUser(User $user): Employee
+    {
+        if ($user->employee) {
+            return $user->employee;
+        }
+
+        $employee = Employee::firstOrCreate(
+            ['email' => $user->email],
+            ['full_name' => $user->name, 'is_manager' => $user->role === 'manager'],
+        );
+
+        $user->update(['employee_id' => $employee->id]);
+
+        return $employee;
+    }
+
     // Self-service profile: any signed-in role can view and edit their own
     // contact details. Organisational fields (department, designation,
     // role, status) stay admin-managed via the routes above.
     public function me(Request $request): JsonResponse
     {
-        $employee = $request->user()->employee;
+        $employee = $this->ensureEmployeeForUser($request->user());
 
         return response()->json([
-            'employee' => $employee
-                ? new EmployeeResource($employee->load(['department', 'designation', 'user']))
-                : null,
+            'employee' => new EmployeeResource($employee->load(['department', 'designation', 'user'])),
         ]);
     }
 
     public function updateMe(Request $request): JsonResponse
     {
-        $employee = $request->user()->employee;
-
-        if (!$employee) {
-            return response()->json([
-                'message' => 'No employee profile is linked to this account.',
-            ], 404);
-        }
+        $employee = $this->ensureEmployeeForUser($request->user());
 
         $data = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],

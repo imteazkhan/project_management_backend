@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api\Auth;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class UserResource extends JsonResource
 {
@@ -19,6 +20,14 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
+            'employee' => $this->employee ? [
+                'id' => $this->employee->id,
+                'full_name' => $this->employee->full_name,
+                'email' => $this->employee->email,
+                'avatar' => $this->employee->avatar
+                    ? Storage::disk('public')->url($this->employee->avatar)
+                    : null,
+            ] : null,
             'email_verified_at' => $this->email_verified_at,
             'is_active' => $this->is_active,
             'is_banned' => $this->is_banned,
